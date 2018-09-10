@@ -50,6 +50,20 @@ public class EventBus {
         com.unRegisterHander(address, handler);
     }
 
+    public void addErrorHandler(ErrorHandler<Json> handler){
+        if (com == null) {
+            throw new IllegalStateException("Eventbus not initialized.");
+        }
+        com.addErrorHandler(handler);
+    }
+
+    public void removeErrorHandler(ErrorHandler<Json> handler){
+        if (com == null) {
+            throw new IllegalStateException("Eventbus not initialized.");
+        }
+        com.addErrorHandler(handler);
+    }
+
     public void send(String adr, Json obj){
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");
@@ -73,6 +87,21 @@ public class EventBus {
             throw new IllegalStateException("Eventbus not initialized.");
         }
         com.sendToStream(true, adr, obj, reply);
+    }
+
+    public void close() {
+        if (com == null) {
+            throw new IllegalStateException("Eventbus not initialized.");
+        }
+
+        com.shutdown();
+        // this will probably not work on socket i/o
+        communicatorThread.interrupt();
+        // however, close will shutown the thread
+        com.closeCon();
+
+        communicatorThread = null;
+        com = null;
     }
 
     private void init(String hostname, int port) {

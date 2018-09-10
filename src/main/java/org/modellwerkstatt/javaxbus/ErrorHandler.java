@@ -2,5 +2,6 @@ package org.modellwerkstatt.javaxbus;
 
 public interface ErrorHandler<T> {
 
-    void handle(boolean stillConected, boolean readerRunning, T payload);
+    void handleMsgFromBus(boolean stillConected, boolean readerRunning, T payload);
+    void handleException(boolean stillConected, boolean readerRunning, Exception e);
 }

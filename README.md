@@ -12,12 +12,12 @@ EventBus bus = EventBus.create("localhost", 8089);
 
 bus.consumer("keyer", new ConsumerHandler<Json>() {
 	@Override
-    public void handle(Json msg) {
+    public void handleMsgFromBus(Json msg) {
     	System.err.println("Received " + msg.at("body").asString());
     }
 });
    
-bus.send("keyer", Json.object().set("msg", "Hello World");
+bus.send("keyer", Json.object().set("msg", "Hello World"));
      
 ```
 

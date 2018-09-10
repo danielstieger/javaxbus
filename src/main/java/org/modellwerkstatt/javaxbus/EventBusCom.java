@@ -3,7 +3,9 @@ package org.modellwerkstatt.javaxbus;
 import mjson.Json;
 
 import java.io.*;
+import java.net.ConnectException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,13 +13,15 @@ import java.util.List;
 import static java.lang.Thread.interrupted;
 
 public class EventBusCom implements Runnable {
+    final static public int RECON_TIMEOUT = 1000;
 
     private String hostname;
     private int port;
     private Socket socket;
     private DataInputStream reader;
     private DataOutputStream writer;
-    private boolean upNRunning;
+    private volatile boolean upNRunning;
+    private volatile boolean stillConnected;
     private VertXProto proto;
     private HashMap<String, List<ConsumerHandler<Json>>> allHandlers;
     private List<ErrorHandler<Json> > errorHandler;
@@ -25,6 +29,7 @@ public class EventBusCom implements Runnable {
 
     public EventBusCom(){
         upNRunning = false;
+        stillConnected = false;
         proto= new VertXProto ();
         allHandlers = new HashMap<String, List<ConsumerHandler<Json>>>();
         errorHandler = new ArrayList<ErrorHandler<Json> >();
@@ -121,10 +126,17 @@ public class EventBusCom implements Runnable {
         }
     }
 
-    private void dispatchError(Json payload){
+    private void dispatchErrorFromBus(Json payload){
         synchronized (this){
             for (ErrorHandler<Json> e: errorHandler) {
-                e.handle(socket != null && socket.isConnected(), upNRunning, payload);
+                e.handleMsgFromBus(stillConnected, upNRunning, payload);
+            }
+        }
+    }
+    private void dispatchException(Exception exception){
+        synchronized (this){
+            for (ErrorHandler<Json> e: errorHandler) {
+                e.handleException(stillConnected, upNRunning, exception);
             }
         }
     }
@@ -135,29 +147,91 @@ public class EventBusCom implements Runnable {
 
         while (!interrupted() && upNRunning) {
             try {
-                Json msg = proto.readFormStream(reader);
+                if (stillConnected) {
+                    Json msg = proto.readFormStream(reader);
 
-                String msgType = msg.at("type").asString();
-                if ("pong".equals(msgType)){
-                    // nice one
+                    String msgType = msg.at("type").asString();
+                    if ("pong".equals(msgType)) {
+                        // nice one
 
-                } else if ("message".equals(msgType)) {
-                    dispatchMessage(msg.at("address").asString(), msg);
+                    } else if ("message".equals(msgType)) {
+                        if (upNRunning) {
+                            // check upNRunning before dealing out messages ...
+                            dispatchMessage(msg.at("address").asString(), msg);
+                        }
 
-                } else if ("err".equals(msgType)) {
-                    // call error Handler
-                    dispatchError(msg);
+                    } else if ("err".equals(msgType)) {
+                        // call error Handler
+                        dispatchErrorFromBus(msg);
+                    }
+
+
+                } else {
+                    tryReconnect();
+
                 }
+
+            } catch (SocketException e) {
+              stillConnected = false;
+                if (upNRunning) {
+                  dispatchException(e);
+              }
+              // else, ignore this one ...
+
+            } catch (EOFException e) {
+              stillConnected = false;
+              // lost connection to vertx ..
+              dispatchException(e);
 
             } catch (IOException e) {
                 throw new RuntimeException(e);
 
             }
+        }
+    }
 
+    private void tryReconnect() {
+        try {
+            closeCon();
+        } catch (Exception e) {
+            // ignore any ex
+        }
+
+        try {
+            Thread.sleep(RECON_TIMEOUT);
+
+            if (!upNRunning) {
+                throw new IllegalStateException("This can not happen");
+            }
+            initCon();
+
+            // if that is successfull, we have to register handlers ...
+            synchronized (this){
+                for (String adr: allHandlers.keySet()) {
+                    proto.writeToStream(writer, proto.register(adr));
+                }
+            }
+
+
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+
+        } catch (RuntimeException e) {
+          if (e.getCause() != null && e.getCause().getClass().equals(ConnectException.class)){
+              // ignore connect ex ...
+          }else {
+              throw e;
+          }
+
+        } catch (InterruptedException e) {
+            // mh .. sleep interrupted ...
 
         }
     }
 
+    public boolean isUpNRunning() {
+        return upNRunning;
+    }
 
     public void init(String hostname, int port){
         this.hostname = hostname;
@@ -175,6 +249,9 @@ public class EventBusCom implements Runnable {
             // to server
             writer = new DataOutputStream(socket.getOutputStream());
 
+            proto.writeToStream(writer, proto.ping());
+            stillConnected = true;
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -184,16 +261,43 @@ public class EventBusCom implements Runnable {
         return socket != null;
     }
 
-    private void closeCon(String hostname, int port){
-        try {
-            socket.close();
-            reader.close();
-            writer.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+    public void shutdown() {
+        synchronized (this) {
+            try {
+                upNRunning = false;
 
-        } finally {
-            socket = null;
+                for (String adr: allHandlers.keySet()) {
+                    proto.writeToStream(writer, proto.unregister(adr));
+                    allHandlers.get(adr).clear();
+                }
+
+                // remove all error handlers
+                errorHandler.clear();
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+
+            }
         }
     }
+
+    public void closeCon(){
+        synchronized (this) {
+            try {
+                stillConnected=false;
+                reader.close();
+                writer.close();
+                socket.close();
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+
+            } finally {
+                socket = null;
+
+            }
+
+        }
+    }
+
 }

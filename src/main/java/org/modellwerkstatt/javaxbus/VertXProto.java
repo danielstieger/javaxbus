@@ -59,6 +59,7 @@ public class VertXProto {
         stream.writeInt(asBytes.length);
         stream.write(asBytes);
         stream.flush();
+        System.err.println("-->> " + new String(asBytes));
     }
 
     public Json readFormStream(DataInputStream stream) throws IOException {
@@ -66,6 +67,7 @@ public class VertXProto {
         int len = stream.readInt();
         byte[] message = new byte[len];
         stream.readFully(message, 0, len);
+        System.err.println("<<-- " + new String(message));
 
         String jsonMsg = new String(message, "UTF-8");
         return Json.read(jsonMsg);
