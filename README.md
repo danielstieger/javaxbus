@@ -10,13 +10,15 @@ IO and a spare task to communicate with the vert.X evenbus tcp bridge.
 
 EventBus bus = EventBus.create("localhost", 8089);
 
-        bus.consumer("keyer", new ConsumerHandler<Json>() {
-            @Override
-            public void handle(Json msg) {
-                System.err.println("Received " + msg.at("body").asString());
-            }
-        });
-        
+bus.consumer("keyer", new ConsumerHandler<Json>() {
+	@Override
+    public void handle(Json msg) {
+    	System.err.println("Received " + msg.at("body").asString());
+    }
+});
+   
+bus.send("keyer", Json.object().set("msg", "Hello World");
+     
 ```
 
 
@@ -24,11 +26,11 @@ EventBus bus = EventBus.create("localhost", 8089);
 
 
 # Testing
-`TODO - insert here`
+`mvn test`. Will execute all available tests......  
 
 # Building
 
-`TODO - insert here` . Find the jar at /lib
+`mvn package`. The lib can be found in the target/ folder after maven build and tested the package
 
 # Dependencies
 none
