@@ -34,13 +34,4 @@ public class AppTest extends TestCase {
 
         assertTrue( true );
     }
-
-
-     /** Rigourous Test 2
-            */
-    public void testApp2()
-    {
-
-        assertTrue( false );
-    }
 }
