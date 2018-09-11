@@ -40,7 +40,7 @@ public class EventBus {
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");
         }
-        com.registerHander(address, handler);
+        com.registerHander(address, handler, true);
     }
 
     public void unregisgter(String address, ConsumerHandler<Json> handler) {
@@ -70,23 +70,19 @@ public class EventBus {
         }
         com.sendToStream(false, adr, obj, null);
     }
-    public void send(String adr, Json obj, String reply){
+
+    public void send(String adr, Json obj, ConsumerHandler<Json> replyHandler){
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");
         }
-        com.sendToStream(false, adr, obj, reply);
+        com.sendToStream(false, adr, obj, replyHandler);
     }
+
     public void publish(String adr, Json obj){
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");
         }
         com.sendToStream(true, adr, obj, null);
-    }
-    public void publish(String adr, Json obj, String reply){
-        if (com == null) {
-            throw new IllegalStateException("Eventbus not initialized.");
-        }
-        com.sendToStream(true, adr, obj, reply);
     }
 
     public void close() {

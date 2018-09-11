@@ -15,6 +15,8 @@ import static java.lang.Thread.interrupted;
 public class EventBusCom implements Runnable {
     final static public int RECON_TIMEOUT = 10000;
     final static public int FAST_RECON_TIMEOUT = 500;
+    final static public String TEMP_HANDLER_SIGNATURE = "__MODWERK_HC__";
+
 
     private String hostname;
     private int port;
@@ -24,7 +26,8 @@ public class EventBusCom implements Runnable {
     private volatile boolean upNRunning;
     private volatile boolean stillConnected;
     private VertXProto proto;
-    private HashMap<String, List<ConsumerHandler<Json>>> allHandlers;
+    private HashMap<String, List<ConsumerHandler<Json>>> consumerHandlers;
+
     private List<ErrorHandler<Json> > errorHandler;
     private boolean underTest;
 
@@ -32,35 +35,42 @@ public class EventBusCom implements Runnable {
         upNRunning = false;
         stillConnected = false;
         proto= new VertXProto ();
-        allHandlers = new HashMap<String, List<ConsumerHandler<Json>>>();
+        consumerHandlers = new HashMap<String, List<ConsumerHandler<Json>>>();
         errorHandler = new ArrayList<ErrorHandler<Json> >();
         underTest = false;
     }
 
-
-    public void sendToStream(boolean publish, String adr, Json obj, String reply){
+    public void sendToStream(boolean publish, String adr, Json obj, ConsumerHandler<Json> replyHandler){
         try {
-            if (publish){
-                proto.writeToStream(writer, proto.publish(adr, obj, reply));
-            } else {
-                proto.writeToStream(writer, proto.send(adr, obj, reply));
+            String replyAdr = null;
+            if (replyHandler != null) {
+                replyAdr = adr + TEMP_HANDLER_SIGNATURE + replyHandler.hashCode();
+                registerHander(replyAdr, replyHandler, false);
             }
+
+            if (publish){
+                proto.writeToStream(writer, proto.publish(adr, obj, replyAdr));
+            } else {
+                proto.writeToStream(writer, proto.send(adr, obj, replyAdr));
+            }
+
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void registerHander(String adr, ConsumerHandler<Json> handler){
+    public void registerHander(String adr, ConsumerHandler<Json> handler, boolean registerWithServer){
         synchronized (this) {
             try {
-                if (!allHandlers.containsKey(adr)){
-                    allHandlers.put(adr, new ArrayList<ConsumerHandler<Json>>());
+                if (!consumerHandlers.containsKey(adr)){
+                    consumerHandlers.put(adr, new ArrayList<ConsumerHandler<Json>>());
                 }
 
-                List<ConsumerHandler<Json>> listOfHandlers = allHandlers.get(adr);
+                List<ConsumerHandler<Json>> listOfHandlers = consumerHandlers.get(adr);
                 listOfHandlers.add(handler);
 
-                if (listOfHandlers.size() == 1){
+                if (listOfHandlers.size() == 1 && registerWithServer){
                     proto.writeToStream(writer, proto.register(adr));
                 }
 
@@ -73,11 +83,11 @@ public class EventBusCom implements Runnable {
     public void unRegisterHander(String adr, ConsumerHandler<Json> handler){
         synchronized (this) {
             try {
-                if (!allHandlers.containsKey(adr)) {
+                if (!consumerHandlers.containsKey(adr)) {
                     throw new IllegalStateException("No handlers registered for adr " + adr);
                 }
 
-                List<ConsumerHandler<Json>> existingHandlers = allHandlers.get(adr);
+                List<ConsumerHandler<Json>> existingHandlers = consumerHandlers.get(adr);
 
                 if (!existingHandlers.contains(handler)) {
                     throw new IllegalStateException("Handler not registered for adr " + adr);
@@ -118,12 +128,17 @@ public class EventBusCom implements Runnable {
 
     private void dispatchMessage(String adr, Json msg){
         synchronized (this){
-            if (!allHandlers.containsKey(adr)){
+            if (!consumerHandlers.containsKey(adr)){
                 throw new IllegalStateException("No handlers registered for " + adr + " but msg " + msg.toString() + " received.");
             }
 
-            for (ConsumerHandler<Json> h : allHandlers.get(adr)) {
+            List<ConsumerHandler<Json>> handlers = consumerHandlers.get(adr);
+            for (ConsumerHandler<Json> h : handlers) {
                 h.handle(msg);
+            }
+
+            if (adr.contains(TEMP_HANDLER_SIGNATURE)) {
+                consumerHandlers.get(adr).clear();
             }
         }
     }
@@ -153,6 +168,7 @@ public class EventBusCom implements Runnable {
                     Json msg = proto.readFormStream(reader);
 
                     String msgType = msg.at("type").asString();
+
                     if ("pong".equals(msgType)) {
                         // nice one
 
@@ -163,6 +179,11 @@ public class EventBusCom implements Runnable {
                         }
 
                     } else if ("err".equals(msgType)) {
+                        // is there an address set?
+                        if (upNRunning && msg.has("address")) {
+                            dispatchMessage(msg.at("address").asString(), msg);
+                        }
+
                         // call error Handler
                         dispatchErrorFromBus(msg);
                     }
@@ -174,11 +195,11 @@ public class EventBusCom implements Runnable {
                 }
 
             } catch (SocketException e) {
-              stillConnected = false;
-                if (upNRunning) {
-                  dispatchException(e);
+              stillConnected = false; // this issues a reconnect ..
+              if (upNRunning) {
+                dispatchException(e);
               }
-              // else, ignore this one ...
+              // else, ignore this one, might be a shutdown
 
             } catch (EOFException e) {
               stillConnected = false;
@@ -186,8 +207,13 @@ public class EventBusCom implements Runnable {
               dispatchException(e);
 
             } catch (IOException e) {
-                throw new RuntimeException(e);
+              stillConnected = false;
+              dispatchException(e);
 
+            } catch (Exception e){
+              // just try to reconnect ...
+              stillConnected = false;
+              dispatchException(e);
             }
         }
     }
@@ -209,24 +235,30 @@ public class EventBusCom implements Runnable {
 
             // if that is successfull, we have to register handlers ...
             synchronized (this){
-                for (String adr: allHandlers.keySet()) {
+                for (String adr: consumerHandlers.keySet()) {
                     proto.writeToStream(writer, proto.register(adr));
                 }
             }
 
 
         } catch (IOException e) {
-          throw new RuntimeException(e);
+            stillConnected = false;
+            dispatchException(e);
 
         } catch (RuntimeException e) {
           if (e.getCause() != null && e.getCause().getClass().equals(ConnectException.class)){
-              // ignore connect ex ...
-          }else {
-              throw e;
+              // ignore connect ex ... we are reconnecting anyway
+          } else {
+              stillConnected = false;
+              dispatchException(e);
           }
 
         } catch (InterruptedException e) {
             // mh .. sleep interrupted ...
+
+        } catch (Exception e) {
+            stillConnected = false;
+            dispatchException(e);
 
         }
     }
@@ -271,10 +303,15 @@ public class EventBusCom implements Runnable {
             try {
                 upNRunning = false;
 
-                for (String adr: allHandlers.keySet()) {
-                    proto.writeToStream(writer, proto.unregister(adr));
-                    allHandlers.get(adr).clear();
+                for (String adr: consumerHandlers.keySet()) {
+                    if (adr.contains(TEMP_HANDLER_SIGNATURE)) {
+                        // do not unregister this one, since this is only a reply handler
+                    } else {
+                        proto.writeToStream(writer, proto.unregister(adr));
+                    }
+                    consumerHandlers.get(adr).clear();
                 }
+                consumerHandlers.clear();
 
                 // remove all error handlers
                 errorHandler.clear();
