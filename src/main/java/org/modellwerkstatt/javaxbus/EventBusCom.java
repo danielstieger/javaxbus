@@ -13,7 +13,8 @@ import java.util.List;
 import static java.lang.Thread.interrupted;
 
 public class EventBusCom implements Runnable {
-    final static public int RECON_TIMEOUT = 1000;
+    final static public int RECON_TIMEOUT = 10000;
+    final static public int FAST_RECON_TIMEOUT = 500;
 
     private String hostname;
     private int port;
@@ -25,7 +26,7 @@ public class EventBusCom implements Runnable {
     private VertXProto proto;
     private HashMap<String, List<ConsumerHandler<Json>>> allHandlers;
     private List<ErrorHandler<Json> > errorHandler;
-
+    private boolean underTest;
 
     public EventBusCom(){
         upNRunning = false;
@@ -33,6 +34,7 @@ public class EventBusCom implements Runnable {
         proto= new VertXProto ();
         allHandlers = new HashMap<String, List<ConsumerHandler<Json>>>();
         errorHandler = new ArrayList<ErrorHandler<Json> >();
+        underTest = false;
     }
 
 
@@ -198,7 +200,7 @@ public class EventBusCom implements Runnable {
         }
 
         try {
-            Thread.sleep(RECON_TIMEOUT);
+            Thread.sleep(underTest ? FAST_RECON_TIMEOUT : RECON_TIMEOUT);
 
             if (!upNRunning) {
                 throw new IllegalStateException("This can not happen");
@@ -259,6 +261,9 @@ public class EventBusCom implements Runnable {
 
     private boolean isInitialized() {
         return socket != null;
+    }
+    public void setUnderTest(){
+        underTest = true;
     }
 
     public void shutdown() {

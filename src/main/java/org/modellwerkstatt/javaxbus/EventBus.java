@@ -104,6 +104,12 @@ public class EventBus {
         com = null;
     }
 
+    public void setUnderTestingMode(){
+        if (com == null) {
+            throw new IllegalStateException("Eventbus not initialized.");
+        }
+        com.setUnderTest();
+    }
     private void init(String hostname, int port) {
 
         com = new EventBusCom();

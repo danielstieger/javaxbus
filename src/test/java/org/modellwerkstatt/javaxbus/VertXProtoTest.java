@@ -8,7 +8,7 @@ import mjson.Json;
 import java.util.jar.JarEntry;
 
 /**
- * Unit test for simple App.
+ * Unit test for simple TestApp1.
  */
 public class VertXProtoTest extends TestCase {
     VertXProto proto = new VertXProto();
