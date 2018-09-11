@@ -2,6 +2,6 @@ package org.modellwerkstatt.javaxbus;
 
 public interface ConsumerHandler<T> {
 
-    void handle(T msg);
+    void handle(boolean error, T msg);
 
 }

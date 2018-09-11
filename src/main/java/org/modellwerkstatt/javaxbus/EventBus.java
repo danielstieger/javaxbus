@@ -43,7 +43,7 @@ public class EventBus {
         com.registerHander(address, handler, true);
     }
 
-    public void unregisgter(String address, ConsumerHandler<Json> handler) {
+    public void unregisgterConsumer(String address, ConsumerHandler<Json> handler) {
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");
         }
@@ -119,7 +119,7 @@ public class EventBus {
     }
 
 
-    static EventBus create (String hostname, int port) {
+    public static EventBus create (String hostname, int port) {
         EventBus bus = new EventBus();
         bus.init(hostname, port);
         return bus;

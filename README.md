@@ -12,8 +12,9 @@ IO and a spare thread to communicate with the vert.x event-bus-tcp-bridge.
 * calling close() will unreg. handlers, shutdown the receiver thread and close the connection, cleaning up all ressources neatly 
 * the library draws heavily on [mjson](https://bolerio.github.io/mjson/), a json object implementation for java
 * you can use send() with a handler to respond to an expected reply by the server 
-* if using send() with an handler, server side fails are dispatched to that handler (not to the error handler, type: err)
-
+* if send() is used with a reply handler, server side fails are dispatched to that handler (not to the error handler, type: err - instead of type: message)
+* if send() with reply handler does not receive a reply within 30sec, a fail is issued (type: err) by vertx. See the vertx documentation for further information
+ 
 
 
 # Usage
@@ -23,7 +24,7 @@ EventBus bus = EventBus.create("localhost", 8089);
 
 bus.consumer("hello", new ConsumerHandler<Json>() {
 	@Override
-	public void handleMsgFromBus(Json msg) {
+	public void handleMsgFromBus(boolean err, Json msg) {
     	System.err.println("Received " + msg.at("body").asString());
     }
 });
@@ -37,9 +38,9 @@ bus.send("hello", Json.object().set("msg", "Hello World"));
 
 
 # Testing
-`mvn test`. Will execute all available tests......  Among the tests are unit tests and a small app as an integration test. 
-You will need a vert.x instance with a tcp-event-bus-bridge and permissions in/outbound for the 'echo' address (do not reg.
-any consumers on this adr.)   
+`mvn test`. Will execute all available tests......  Among the tests are unit tests and some small test-apps. 
+You will need a vert.x instance with a tcp-event-bus-bridge and permissions in/outbound for the 'echo' and the 'echo2' address 
+(do not reg. any consumers on this adr.) in order to run the test-suit.   
 
 
 

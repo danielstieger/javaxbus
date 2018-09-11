@@ -46,7 +46,7 @@ public class TestApp2 {
 
         ev.consumer("echo", new ConsumerHandler<Json>() {
             @Override
-            public void handle(Json msg) {
+            public void handle(boolean err, Json msg) {
                 infos.receivedMsg = msg;
 
                 if (msg.at("body").at("content").asString().equals("msg1")){

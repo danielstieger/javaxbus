@@ -5,12 +5,10 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import mjson.Json;
 
-import java.util.jar.JarEntry;
-
 /**
  * Unit test for simple TestApp1.
  */
-public class VertXProtoTest extends TestCase {
+public class StandaloneProtocollTest extends TestCase {
     VertXProto proto = new VertXProto();
 
     /**
@@ -18,7 +16,7 @@ public class VertXProtoTest extends TestCase {
      *
      * @param testName name of the test case
      */
-    public VertXProtoTest(String testName )
+    public StandaloneProtocollTest(String testName )
     {
         super( testName );
     }
@@ -28,7 +26,7 @@ public class VertXProtoTest extends TestCase {
      */
     public static Test suite()
     {
-        return new TestSuite( VertXProtoTest.class );
+        return new TestSuite( StandaloneProtocollTest.class );
     }
 
 

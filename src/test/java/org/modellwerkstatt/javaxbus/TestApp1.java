@@ -40,7 +40,7 @@ public class TestApp1 {
 
         ev.consumer("echo", new ConsumerHandler<Json>() {
             @Override
-            public void handle(Json msg) {
+            public void handle(boolean err, Json msg) {
                 infos.receivedMsg = msg;
                 infos.latch.countDown();
             }

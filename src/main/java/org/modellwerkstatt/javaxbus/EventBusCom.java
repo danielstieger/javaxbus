@@ -126,7 +126,7 @@ public class EventBusCom implements Runnable {
     }
 
 
-    private void dispatchMessage(String adr, Json msg){
+    private void dispatchMessage(String adr, boolean err, Json msg){
         synchronized (this){
             if (!consumerHandlers.containsKey(adr)){
                 throw new IllegalStateException("No handlers registered for " + adr + " but msg " + msg.toString() + " received.");
@@ -134,7 +134,7 @@ public class EventBusCom implements Runnable {
 
             List<ConsumerHandler<Json>> handlers = consumerHandlers.get(adr);
             for (ConsumerHandler<Json> h : handlers) {
-                h.handle(msg);
+                h.handle(err, msg);
             }
 
             if (adr.contains(TEMP_HANDLER_SIGNATURE)) {
@@ -175,17 +175,18 @@ public class EventBusCom implements Runnable {
                     } else if ("message".equals(msgType)) {
                         if (upNRunning) {
                             // check upNRunning before dealing out messages ...
-                            dispatchMessage(msg.at("address").asString(), msg);
+                            dispatchMessage(msg.at("address").asString(), false, msg);
                         }
 
                     } else if ("err".equals(msgType)) {
                         // is there an address set?
                         if (upNRunning && msg.has("address")) {
-                            dispatchMessage(msg.at("address").asString(), msg);
-                        }
+                            dispatchMessage(msg.at("address").asString(), true, msg);
 
-                        // call error Handler
-                        dispatchErrorFromBus(msg);
+                        } else {
+                            // call error Handler
+                            dispatchErrorFromBus(msg);
+                        }
                     }
 
 
