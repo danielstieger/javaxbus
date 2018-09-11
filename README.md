@@ -54,6 +54,5 @@ as already statet, javaxbus draws heavily on [mjson](https://bolerio.github.io/m
 
 
 
-# More examples can be found at  
-*  
-* 
+# More examples   
+* The [centrix verticel](https://github.com/danielstieger/centrix) which comes with an echo handler 
