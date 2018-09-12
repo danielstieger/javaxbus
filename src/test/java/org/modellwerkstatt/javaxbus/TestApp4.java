@@ -6,10 +6,11 @@ import java.util.concurrent.CountDownLatch;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNotNull;
+import static junit.framework.Assert.assertTrue;
 
 
 public class TestApp4 {
-    private Json receivedMsg = null;
+    private Message receivedMsg = null;
     private CountDownLatch latch = new CountDownLatch(1);
     private String errorMsg = null;
 
@@ -22,9 +23,9 @@ public class TestApp4 {
         EventBus ev = EventBus.create("localhost", 8089);
         final TestApp4 infos = new TestApp4();
 
-        ev.addErrorHandler(new ErrorHandler<Json>() {
+        ev.addErrorHandler(new ErrorHandler() {
             @Override
-            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Json payload) {
+            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Message payload) {
                 infos.errorMsg = "connected " + stillConected + " reader_ok " + readerRunning + " - " + payload.toString();
                 infos.latch.countDown();
             }
@@ -38,13 +39,13 @@ public class TestApp4 {
 
 
         try {
-            ev.send("echo", Json.object().set("from", "dan").set("noreply", "no"), new ConsumerHandler<Json>() {
+            ev.send("echo", Json.object().set("from", "dan").set("noreply", "no"), new ConsumerHandler() {
                 @Override
-                public void handle(boolean err, Json msg) {
-                    System.err.println("fail "+ err + " ? > " + msg.toString());
+                public void handle(Message msg) {
+                    System.err.println("fail "+ msg.isErrorMsg() + " ? > " + msg.toString());
                     infos.receivedMsg = msg;
-                    if (err){
-                        infos.errorMsg = "Fail due to " + msg.at("message").asString() + " -> " + msg.at("failureType");
+                    if (msg.isErrorMsg()){
+                        infos.errorMsg = "Fail due to " + msg.getErrMessage() + " -> " + msg.getErrFailureType();
                     }
                     infos.latch.countDown();
                 }
@@ -52,7 +53,7 @@ public class TestApp4 {
 
             infos.latch.await();
             assertNotNull(infos.receivedMsg);
-            assertEquals(infos.receivedMsg.at("type").asString(), "err");
+            assertTrue(infos.receivedMsg.isErrorMsg());
             assertNotNull(infos.errorMsg);
             System.err.println(infos.errorMsg);
 

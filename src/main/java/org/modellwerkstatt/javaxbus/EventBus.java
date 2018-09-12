@@ -36,53 +36,53 @@ public class EventBus {
     }
 
 
-    public void consumer(String address, ConsumerHandler<Json> handler) {
+    public void consumer(String address, ConsumerHandler handler) {
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");
         }
         com.registerHander(address, handler, true);
     }
 
-    public void unregisgterConsumer(String address, ConsumerHandler<Json> handler) {
+    public void unregisgterConsumer(String address, ConsumerHandler handler) {
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");
         }
         com.unRegisterHander(address, handler);
     }
 
-    public void addErrorHandler(ErrorHandler<Json> handler){
+    public void addErrorHandler(ErrorHandler handler){
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");
         }
         com.addErrorHandler(handler);
     }
 
-    public void removeErrorHandler(ErrorHandler<Json> handler){
+    public void removeErrorHandler(ErrorHandler handler){
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");
         }
         com.addErrorHandler(handler);
     }
 
-    public void send(String adr, Json obj){
+    public void send(String adr, Json content){
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");
         }
-        com.sendToStream(false, adr, obj, null);
+        com.sendToStream(false, adr, content, null);
     }
 
-    public void send(String adr, Json obj, ConsumerHandler<Json> replyHandler){
+    public void send(String adr, Json content, ConsumerHandler replyHandler){
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");
         }
-        com.sendToStream(false, adr, obj, replyHandler);
+        com.sendToStream(false, adr, content, replyHandler);
     }
 
-    public void publish(String adr, Json obj){
+    public void publish(String adr, Json content){
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");
         }
-        com.sendToStream(true, adr, obj, null);
+        com.sendToStream(true, adr, content, null);
     }
 
     public void close() {

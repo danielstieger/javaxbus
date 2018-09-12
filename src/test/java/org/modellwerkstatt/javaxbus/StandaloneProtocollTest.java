@@ -9,7 +9,7 @@ import mjson.Json;
  * Unit test for simple TestApp1.
  */
 public class StandaloneProtocollTest extends TestCase {
-    VertXProto proto = new VertXProto();
+    VertXProtoMJson proto = new VertXProtoMJson();
 
     /**
      * Create the test case

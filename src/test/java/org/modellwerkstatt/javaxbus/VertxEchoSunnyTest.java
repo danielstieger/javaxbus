@@ -43,9 +43,9 @@ public class VertxEchoSunnyTest extends TestCase {
         final TestInfo info = new TestInfo();
 
         eb.setUnderTestingMode();
-        eb.addErrorHandler(new ErrorHandler<Json>() {
+        eb.addErrorHandler(new ErrorHandler() {
             @Override
-            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Json payload) {
+            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Message payload) {
                 // should not happen
                 assertTrue(false);
                 info.msg1Received.countDown();
@@ -58,12 +58,12 @@ public class VertxEchoSunnyTest extends TestCase {
             }
         });
 
-        eb.consumer("echo", new ConsumerHandler<Json>() {
+        eb.consumer("echo", new ConsumerHandler() {
             @Override
-            public void handle(boolean error, Json msg) {
+            public void handle(Message msg) {
                 dl(msg.toString());
 
-                assertFalse(error);
+                assertFalse(msg.isErrorMsg());
                 info.lastMsgReceived = msg;
                 info.msg1Received.countDown();
             }
@@ -81,7 +81,7 @@ public class VertxEchoSunnyTest extends TestCase {
         eb.close();
 
         assertNotNull(info.lastMsgReceived);
-        assertEquals(info.lastMsgReceived.at("body").at("content").asString(), "hello");
+        assertEquals(info.lastMsgReceived.getBodyAsMJson().at("content").asString(), "hello");
 
     }
 
@@ -92,9 +92,9 @@ public class VertxEchoSunnyTest extends TestCase {
         final TestInfo info = new TestInfo();
 
         eb.setUnderTestingMode();
-        eb.addErrorHandler(new ErrorHandler<Json>() {
+        eb.addErrorHandler(new ErrorHandler() {
             @Override
-            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Json payload) {
+            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Message payload) {
                 // should not happen
                 assertTrue(false);
                 info.msg1Received.countDown();
@@ -107,12 +107,12 @@ public class VertxEchoSunnyTest extends TestCase {
             }
         });
 
-        eb.consumer("echo", new ConsumerHandler<Json>() {
+        eb.consumer("echo", new ConsumerHandler() {
             @Override
-            public void handle(boolean error, Json msg) {
+            public void handle(Message msg) {
                 dl(msg.toString());
 
-                assertFalse(error);
+                assertFalse(msg.isErrorMsg());
                 info.lastMsgReceived = msg;
                 info.msg1Received.countDown();
             }
@@ -130,8 +130,9 @@ public class VertxEchoSunnyTest extends TestCase {
         eb.close();
 
         assertNotNull(info.lastMsgReceived);
-        assertEquals(info.lastMsgReceived.at("body").at("content").asString(), "hello");
-        assertEquals(info.lastMsgReceived.at("send").asBoolean(), false);
+
+        assertEquals(info.lastMsgReceived.getBodyAsMJson().at("content").asString(), "hello");
+        assertEquals(info.lastMsgReceived.isPublishedMsg(), true);
     }
 
 
@@ -142,9 +143,9 @@ public class VertxEchoSunnyTest extends TestCase {
         final TestInfo info = new TestInfo();
 
         eb.setUnderTestingMode();
-        eb.addErrorHandler(new ErrorHandler<Json>() {
+        eb.addErrorHandler(new ErrorHandler() {
             @Override
-            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Json payload) {
+            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Message payload) {
                 // should not happen
                 assertTrue(false);
                 info.msg1Received.countDown();
@@ -159,23 +160,23 @@ public class VertxEchoSunnyTest extends TestCase {
             }
         });
 
-        eb.consumer("echo", new ConsumerHandler<Json>() {
+        eb.consumer("echo", new ConsumerHandler() {
             @Override
-            public void handle(boolean error, Json msg) {
+            public void handle(Message msg) {
                 dl(msg.toString());
 
-                assertFalse(error);
+                assertFalse(msg.isErrorMsg());
                 info.lastMsgReceived = msg;
                 info.msg1Received.countDown();
             }
         });
 
-        eb.consumer("echo", new ConsumerHandler<Json>() {
+        eb.consumer("echo", new ConsumerHandler() {
             @Override
-            public void handle(boolean error, Json msg) {
+            public void handle(Message msg) {
                 dl(msg.toString());
 
-                assertFalse(error);
+                assertFalse(msg.isErrorMsg());
                 info.lastMsgReceived = msg;
                 info.msg2Received.countDown();
             }
@@ -194,10 +195,10 @@ public class VertxEchoSunnyTest extends TestCase {
         eb.close();
 
         assertNotNull(info.lastMsgReceived);
-        assertEquals(info.lastMsgReceived.at("body").at("content").asString(), "hello");
+        assertEquals(info.lastMsgReceived.getBodyAsMJson().at("content").asString(), "hello");
 
         // this was a publish msg...
-        assertEquals(info.lastMsgReceived.at("send").asBoolean(), true);
+        assertEquals(info.lastMsgReceived.isPublishedMsg(), false);
     }
 
 
@@ -208,9 +209,9 @@ public class VertxEchoSunnyTest extends TestCase {
         final TestInfo info = new TestInfo();
 
         eb.setUnderTestingMode();
-        eb.addErrorHandler(new ErrorHandler<Json>() {
+        eb.addErrorHandler(new ErrorHandler() {
             @Override
-            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Json payload) {
+            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Message payload) {
                 // should not happen
                 assertTrue(false);
                 info.msg1Received.countDown();
@@ -225,23 +226,23 @@ public class VertxEchoSunnyTest extends TestCase {
             }
         });
 
-        eb.consumer("echo", new ConsumerHandler<Json>() {
+        eb.consumer("echo", new ConsumerHandler() {
             @Override
-            public void handle(boolean error, Json msg) {
+            public void handle(Message msg) {
                 dl(msg.toString());
 
-                assertFalse(error);
+                assertFalse(msg.isErrorMsg());
                 info.lastMsgReceived = msg;
                 info.msg1Received.countDown();
             }
         });
 
-        eb.consumer("echo2", new ConsumerHandler<Json>() {
+        eb.consumer("echo2", new ConsumerHandler() {
             @Override
-            public void handle(boolean error, Json msg) {
+            public void handle(Message msg) {
                 dl(msg.toString());
 
-                assertFalse(error);
+                assertFalse(msg.isErrorMsg());
                 info.lastMsgReceived = msg;
                 info.msg2Received.countDown();
             }
@@ -259,12 +260,14 @@ public class VertxEchoSunnyTest extends TestCase {
         eb.close();
 
         assertNotNull(info.lastMsgReceived);
-        assertEquals(info.lastMsgReceived.at("body").at("content").asString(), "hello");
+        Json msg = info.lastMsgReceived.getBodyAsMJson();
+        assertEquals(msg.at("content").asString(), "hello");
+
         // echo and not echo 2!
-        assertEquals(info.lastMsgReceived.at("address").asString(), "echo2");
+        assertEquals(info.lastMsgReceived.getAddress(), "echo2");
         assertEquals(info.msg1Received.getCount(), 1);
 
         // this was a publish msg...
-        assertEquals(info.lastMsgReceived.at("send").asBoolean(), true);
+        assertEquals(!info.lastMsgReceived.isPublishedMsg(), true);
     }
 }

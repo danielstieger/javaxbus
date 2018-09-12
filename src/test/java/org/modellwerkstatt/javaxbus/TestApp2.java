@@ -9,7 +9,7 @@ import static junit.framework.Assert.*;
 
 
 public class TestApp2 {
-    private Json receivedMsg = null;
+    private Message receivedMsg = null;
     private CountDownLatch firstMessage = new CountDownLatch(1);
     private CountDownLatch errorHandlerCalled = new CountDownLatch(1);
     private CountDownLatch secondMessage = new CountDownLatch(1);
@@ -28,9 +28,9 @@ public class TestApp2 {
 
 
         ev.setUnderTestingMode();
-        ev.addErrorHandler(new ErrorHandler<Json>() {
+        ev.addErrorHandler(new ErrorHandler() {
             @Override
-            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Json payload) {
+            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Message payload) {
                 infos.receivedMsg = null;
                 infos.errorMsg = "connected " + stillConected + " reader_ok " + readerRunning + " - " + payload.toString();
                 infos.errorHandlerCalled.countDown();
@@ -44,15 +44,16 @@ public class TestApp2 {
             }
         });
 
-        ev.consumer("echo", new ConsumerHandler<Json>() {
+        ev.consumer("echo", new ConsumerHandler() {
             @Override
-            public void handle(boolean err, Json msg) {
-                infos.receivedMsg = msg;
+            public void handle(Message r) {
+                infos.receivedMsg = r;
+                Json msg = infos.receivedMsg.getBodyAsMJson();
 
-                if (msg.at("body").at("content").asString().equals("msg1")){
+                if (msg.at("content").asString().equals("msg1")){
                     infos.firstMessage.countDown();
 
-                } else if (msg.at("body").at("content").asString().equals("msg2")) {
+                } else if (msg.at("content").asString().equals("msg2")) {
                     infos.secondMessage.countDown();
 
                 }else {
@@ -71,7 +72,9 @@ public class TestApp2 {
             infos.firstMessage.await();
             assertNull(infos.errorMsg);
             assertNotNull(infos.receivedMsg);
-            assertEquals("msg1", infos.receivedMsg.at("body").at("content").asString());
+
+            Json msg = infos.receivedMsg.getBodyAsMJson();
+            assertEquals("msg1", msg.at("content").asString());
 
 
             System.err.println("Shut down vert.x and press a key..... ");
@@ -93,7 +96,9 @@ public class TestApp2 {
             infos.secondMessage.await();
             assertNull(infos.errorMsg);
             assertNotNull(infos.receivedMsg);
-            assertEquals("msg2", infos.receivedMsg.at("body").at("content").asString());
+
+            msg = infos.receivedMsg.getBodyAsMJson();
+            assertEquals("msg2", msg.at("content").asString());
 
 
         } catch (InterruptedException e) {

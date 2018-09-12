@@ -25,22 +25,22 @@ public class EventBusCom implements Runnable {
     private DataOutputStream writer;
     private volatile boolean upNRunning;
     private volatile boolean stillConnected;
-    private VertXProto proto;
-    private HashMap<String, List<ConsumerHandler<Json>>> consumerHandlers;
+    private VertXProtoMJson proto;
+    private HashMap<String, List<ConsumerHandler>> consumerHandlers;
 
-    private List<ErrorHandler<Json> > errorHandler;
+    private List<ErrorHandler> errorHandler;
     private boolean underTest;
 
     public EventBusCom(){
         upNRunning = false;
         stillConnected = false;
-        proto= new VertXProto ();
-        consumerHandlers = new HashMap<String, List<ConsumerHandler<Json>>>();
-        errorHandler = new ArrayList<ErrorHandler<Json> >();
+        proto= new VertXProtoMJson();
+        consumerHandlers = new HashMap<String, List<ConsumerHandler>>();
+        errorHandler = new ArrayList<ErrorHandler >();
         underTest = false;
     }
 
-    public void sendToStream(boolean publish, String adr, Json obj, ConsumerHandler<Json> replyHandler){
+    public void sendToStream(boolean publish, String adr, Json msg, ConsumerHandler replyHandler){
         try {
             String replyAdr = null;
             if (replyHandler != null) {
@@ -49,9 +49,9 @@ public class EventBusCom implements Runnable {
             }
 
             if (publish){
-                proto.writeToStream(writer, proto.publish(adr, obj, replyAdr));
+                proto.writeToStream(writer, proto.publish(adr, msg, replyAdr));
             } else {
-                proto.writeToStream(writer, proto.send(adr, obj, replyAdr));
+                proto.writeToStream(writer, proto.send(adr, msg, replyAdr));
             }
 
 
@@ -60,14 +60,14 @@ public class EventBusCom implements Runnable {
         }
     }
 
-    public void registerHander(String adr, ConsumerHandler<Json> handler, boolean registerWithServer){
+    public void registerHander(String adr, ConsumerHandler handler, boolean registerWithServer){
         synchronized (this) {
             try {
                 if (!consumerHandlers.containsKey(adr)){
-                    consumerHandlers.put(adr, new ArrayList<ConsumerHandler<Json>>());
+                    consumerHandlers.put(adr, new ArrayList<ConsumerHandler>());
                 }
 
-                List<ConsumerHandler<Json>> listOfHandlers = consumerHandlers.get(adr);
+                List<ConsumerHandler> listOfHandlers = consumerHandlers.get(adr);
                 listOfHandlers.add(handler);
 
                 if (listOfHandlers.size() == 1 && registerWithServer){
@@ -80,14 +80,14 @@ public class EventBusCom implements Runnable {
         }
     }
 
-    public void unRegisterHander(String adr, ConsumerHandler<Json> handler){
+    public void unRegisterHander(String adr, ConsumerHandler handler){
         synchronized (this) {
             try {
                 if (!consumerHandlers.containsKey(adr)) {
                     throw new IllegalStateException("No handlers registered for adr " + adr);
                 }
 
-                List<ConsumerHandler<Json>> existingHandlers = consumerHandlers.get(adr);
+                List<ConsumerHandler> existingHandlers = consumerHandlers.get(adr);
 
                 if (!existingHandlers.contains(handler)) {
                     throw new IllegalStateException("Handler not registered for adr " + adr);
@@ -105,7 +105,7 @@ public class EventBusCom implements Runnable {
         }
     }
 
-    public void addErrorHandler(ErrorHandler<Json> handler){
+    public void addErrorHandler(ErrorHandler handler){
         synchronized (this) {
             if (errorHandler.contains(handler)){
                 throw new IllegalStateException("You should not register this handler twice.");
@@ -115,7 +115,7 @@ public class EventBusCom implements Runnable {
         }
     }
 
-    public void removeErrorHandler(ErrorHandler<Json> handler){
+    public void removeErrorHandler(ErrorHandler handler){
         synchronized (this) {
             if (!errorHandler.contains(handler)){
                 throw new IllegalStateException("The given handler was never registered.....");
@@ -126,15 +126,15 @@ public class EventBusCom implements Runnable {
     }
 
 
-    private void dispatchMessage(String adr, boolean err, Json msg){
+    private void dispatchMessage(String adr, Message msg){
         synchronized (this){
             if (!consumerHandlers.containsKey(adr)){
                 throw new IllegalStateException("No handlers registered for " + adr + " but msg " + msg.toString() + " received.");
             }
 
-            List<ConsumerHandler<Json>> handlers = consumerHandlers.get(adr);
-            for (ConsumerHandler<Json> h : handlers) {
-                h.handle(err, msg);
+            List<ConsumerHandler> handlers = consumerHandlers.get(adr);
+            for (ConsumerHandler h : handlers) {
+                h.handle(msg);
             }
 
             if (adr.contains(TEMP_HANDLER_SIGNATURE)) {
@@ -143,16 +143,16 @@ public class EventBusCom implements Runnable {
         }
     }
 
-    private void dispatchErrorFromBus(Json payload){
+    private void dispatchErrorFromBus(Message msg){
         synchronized (this){
-            for (ErrorHandler<Json> e: errorHandler) {
-                e.handleMsgFromBus(stillConnected, upNRunning, payload);
+            for (ErrorHandler e: errorHandler) {
+                e.handleMsgFromBus(stillConnected, upNRunning, msg);
             }
         }
     }
     private void dispatchException(Exception exception){
         synchronized (this){
-            for (ErrorHandler<Json> e: errorHandler) {
+            for (ErrorHandler e: errorHandler) {
                 e.handleException(stillConnected, upNRunning, exception);
             }
         }
@@ -174,18 +174,20 @@ public class EventBusCom implements Runnable {
 
                     } else if ("message".equals(msgType)) {
                         if (upNRunning) {
-                            // check upNRunning before dealing out messages ...
-                            dispatchMessage(msg.at("address").asString(), false, msg);
+                            Message msgToSend = proto.prepareMessageToDeliver(msgType, msg);
+                            dispatchMessage(msgToSend.getAddress(), msgToSend);
                         }
 
                     } else if ("err".equals(msgType)) {
                         // is there an address set?
                         if (upNRunning && msg.has("address")) {
-                            dispatchMessage(msg.at("address").asString(), true, msg);
+                            Message msgToSend = proto.prepareMessageToDeliver(msgType, msg);
+                            dispatchMessage(msgToSend.getAddress(), msgToSend);
 
                         } else {
+                            Message msgToSend = proto.prepareMessageToDeliver(msgType, msg);
                             // call error Handler
-                            dispatchErrorFromBus(msg);
+                            dispatchErrorFromBus(msgToSend);
                         }
                     }
 

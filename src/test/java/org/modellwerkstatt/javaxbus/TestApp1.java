@@ -11,7 +11,7 @@ import static junit.framework.Assert.assertNull;
 
 
 public class TestApp1 {
-    private Json receivedMsg = null;
+    private Message receivedMsg = null;
     private CountDownLatch latch = new CountDownLatch(1);
     private String errorMsg = null;
 
@@ -24,10 +24,10 @@ public class TestApp1 {
         EventBus ev = EventBus.create("localhost", 8089);
         final TestApp1 infos = new TestApp1();
 
-        ev.addErrorHandler(new ErrorHandler<Json>() {
+        ev.addErrorHandler(new ErrorHandler() {
             @Override
-            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Json payload) {
-                infos.errorMsg = "connected " + stillConected + " reader_ok " + readerRunning + " - " + payload.toString();
+            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Message message) {
+                infos.errorMsg = "connected " + stillConected + " reader_ok " + readerRunning + " - " + message.toString();
                 infos.latch.countDown();
             }
 
@@ -38,9 +38,9 @@ public class TestApp1 {
             }
         });
 
-        ev.consumer("echo", new ConsumerHandler<Json>() {
+        ev.consumer("echo", new ConsumerHandler() {
             @Override
-            public void handle(boolean err, Json msg) {
+            public void handle(Message msg) {
                 infos.receivedMsg = msg;
                 infos.latch.countDown();
             }
@@ -66,6 +66,8 @@ public class TestApp1 {
 
         assertNull(infos.errorMsg);
         assertNotNull(infos.receivedMsg);
-        assertEquals("dan", infos.receivedMsg.at("body").at("from").asString());
+
+        Json jsonContent = infos.receivedMsg.getBodyAsMJson();
+        assertEquals("dan", jsonContent.at("from").asString());
     }
 }

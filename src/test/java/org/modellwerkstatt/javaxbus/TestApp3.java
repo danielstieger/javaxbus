@@ -8,7 +8,7 @@ import static junit.framework.Assert.*;
 
 
 public class TestApp3 {
-    private Json receivedMsg = null;
+    private Message receivedMsg = null;
     private CountDownLatch latch = new CountDownLatch(1);
     private String errorMsg = null;
 
@@ -21,9 +21,9 @@ public class TestApp3 {
         EventBus ev = EventBus.create("localhost", 8089);
         final TestApp3 infos = new TestApp3();
 
-        ev.addErrorHandler(new ErrorHandler<Json>() {
+        ev.addErrorHandler(new ErrorHandler() {
             @Override
-            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Json payload) {
+            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Message payload) {
                 infos.errorMsg = "connected " + stillConected + " reader_ok " + readerRunning + " - " + payload.toString();
                 infos.latch.countDown();
             }
@@ -37,9 +37,9 @@ public class TestApp3 {
 
 
         try {
-            ev.send("echo", Json.object().set("from", "dan").set("reply", "yes"), new ConsumerHandler<Json>() {
+            ev.send("echo", Json.object().set("from", "dan").set("reply", "yes"), new ConsumerHandler() {
                 @Override
-                public void handle(boolean err, Json msg) {
+                public void handle(Message msg) {
                     System.err.println("ok? > " + msg.toString());
                     infos.receivedMsg = msg;
                     infos.latch.countDown();
@@ -48,14 +48,14 @@ public class TestApp3 {
 
             infos.latch.await();
             assertNotNull(infos.receivedMsg);
-            assertEquals(infos.receivedMsg.at("type").asString(), "message");
+            assertTrue(!infos.receivedMsg.isErrorMsg());
 
 
             infos.latch = new CountDownLatch(1);
 
-            ev.send("echo", Json.object().set("from", "dan").set("content", "hello world").set("fail","yes"), new ConsumerHandler<Json>() {
+            ev.send("echo", Json.object().set("from", "dan").set("content", "hello world").set("fail","yes"), new ConsumerHandler() {
                 @Override
-                public void handle(boolean err, Json msg) {
+                public void handle(Message msg) {
                     System.err.println("fail? > " + msg.toString());
                     infos.receivedMsg = msg;
                     infos.latch.countDown();
@@ -65,9 +65,8 @@ public class TestApp3 {
 
             infos.latch.await();
             assertNotNull(infos.receivedMsg);
-            assertEquals(infos.receivedMsg.at("type").asString(), "err");
-            assertEquals(infos.receivedMsg.at("sourceAddress").asString(), "echo");
-
+            assertTrue(infos.receivedMsg.isErrorMsg());
+            System.err.println("> "+ infos.receivedMsg.toString());
 
             ev.close();
 

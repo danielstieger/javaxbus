@@ -1,7 +1,5 @@
 package org.modellwerkstatt.javaxbus;
 
-import mjson.Json;
-
 import java.util.concurrent.CountDownLatch;
 
 public class TestInfo {
@@ -10,7 +8,7 @@ public class TestInfo {
     public CountDownLatch msg3Received = new CountDownLatch(1);
     public CountDownLatch errorReceived = new CountDownLatch(1);
 
-    public Json lastMsgReceived;
+    public Message lastMsgReceived;
     public String lastError;
 
 }

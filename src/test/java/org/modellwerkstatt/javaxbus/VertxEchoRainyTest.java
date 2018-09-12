@@ -43,9 +43,9 @@ public class VertxEchoRainyTest extends TestCase {
         final TestInfo info = new TestInfo();
 
         eb.setUnderTestingMode();
-        eb.addErrorHandler(new ErrorHandler<Json>() {
+        eb.addErrorHandler(new ErrorHandler() {
             @Override
-            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Json payload) {
+            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Message payload) {
                 // should not happen
                 assertTrue(false);
                 info.msg1Received.countDown();
@@ -53,16 +53,18 @@ public class VertxEchoRainyTest extends TestCase {
 
             @Override
             public void handleException(boolean stillConected, boolean readerRunning, Exception e) {
+                e.printStackTrace();
                 assertTrue(false);
                 info.msg1Received.countDown();
             }
         });
 
-        eb.send("echo", Json.object().set("content", "hello"), new ConsumerHandler<Json>() {
+        eb.send("echo", Json.object().set("content", "hello"), new ConsumerHandler() {
             @Override
-            public void handle(boolean error, Json msg) {
-                assertTrue(error);
+            public void handle(Message msg) {
+                assertTrue(msg.isErrorMsg());
                 dl(msg.toString());
+
                 info.lastMsgReceived = msg;
                 info.msg1Received.countDown();
             }
@@ -80,9 +82,9 @@ public class VertxEchoRainyTest extends TestCase {
 
         // reply called with a fail!
         assertNotNull(info.lastMsgReceived);
-        assertEquals(info.lastMsgReceived.at("type").asString(), "err");
+        assertEquals(info.lastMsgReceived.isErrorMsg(), true);
         // message should be no handlers ..
-        assertEquals(info.lastMsgReceived.at("failureType").asString(), "NO_HANDLERS");
+        assertEquals(info.lastMsgReceived.getErrFailureType(), "NO_HANDLERS");
 
     }
 
@@ -95,9 +97,9 @@ public class VertxEchoRainyTest extends TestCase {
         final TestInfo info = new TestInfo();
 
         eb.setUnderTestingMode();
-        eb.addErrorHandler(new ErrorHandler<Json>() {
+        eb.addErrorHandler(new ErrorHandler() {
             @Override
-            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Json payload) {
+            public void handleMsgFromBus(boolean stillConected, boolean readerRunning, Message payload) {
                 // should not happen
                 dl(payload.toString());
                 info.lastMsgReceived = payload;
@@ -125,10 +127,10 @@ public class VertxEchoRainyTest extends TestCase {
 
         // reply called with a fail!
         assertNotNull(info.lastMsgReceived);
-        assertEquals(info.lastMsgReceived.at("type").asString(), "err");
+        assertEquals(info.lastMsgReceived.isErrorMsg(), true);
 
         // message should be access denied...
-        assertEquals(info.lastMsgReceived.has("message"), true);
+        assertNotNull(info.lastMsgReceived.getErrMessage());
 
     }
 
