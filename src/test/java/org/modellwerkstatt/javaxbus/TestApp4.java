@@ -52,6 +52,7 @@ public class TestApp4 {
             });
 
             infos.latch.await();
+
             assertNotNull(infos.receivedMsg);
             assertTrue(infos.receivedMsg.isErrorMsg());
             assertNotNull(infos.errorMsg);
