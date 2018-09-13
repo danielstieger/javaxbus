@@ -85,6 +85,13 @@ public class EventBus {
         com.sendToStream(true, adr, content, null);
     }
 
+    public boolean isConnected(){
+        if (com == null) {
+            throw new IllegalStateException("Eventbus not initialized.");
+        }
+        return com.isConnected();
+    }
+
     public void close() {
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");

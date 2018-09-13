@@ -231,18 +231,17 @@ public class EventBusCom implements Runnable {
         try {
             Thread.sleep(underTest ? FAST_RECON_TIMEOUT : RECON_TIMEOUT);
 
-            if (!upNRunning) {
-                throw new IllegalStateException("This can not happen");
-            }
-            initCon();
+            // shutdown while sleeping ?
+            if (upNRunning) {
+                initCon();
 
-            // if that is successfull, we have to register handlers ...
-            synchronized (this){
-                for (String adr: consumerHandlers.keySet()) {
-                    proto.writeToStream(writer, proto.register(adr));
+                // if that is successfull, we have to register handlers ...
+                synchronized (this){
+                    for (String adr: consumerHandlers.keySet()) {
+                        proto.writeToStream(writer, proto.register(adr));
+                    }
                 }
             }
-
 
         } catch (IOException e) {
             stillConnected = false;
@@ -269,6 +268,10 @@ public class EventBusCom implements Runnable {
     public boolean isUpNRunning() {
         return upNRunning;
     }
+    public boolean isConnected() {
+        return stillConnected;
+    }
+
 
     public void init(String hostname, int port){
         this.hostname = hostname;
@@ -332,7 +335,9 @@ public class EventBusCom implements Runnable {
                 stillConnected=false;
                 reader.close();
                 writer.close();
-                socket.close();
+                if (socket != null) {
+                    socket.close();
+                }
 
             } catch (IOException e) {
                 throw new RuntimeException(e);
