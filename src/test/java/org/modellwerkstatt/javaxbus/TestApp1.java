@@ -63,7 +63,7 @@ public class TestApp1 {
             e.printStackTrace();
         }
 
-
+        System.err.println(infos.errorMsg);
         assertNull(infos.errorMsg);
         assertNotNull(infos.receivedMsg);
 

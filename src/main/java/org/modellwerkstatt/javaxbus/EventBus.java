@@ -28,6 +28,8 @@ import mjson.Json;
 
 
 public class EventBus {
+    static public final String VERSION = "0.9 C";
+    static public final boolean USE_NIO = true;
     private Thread communicatorThread;
     private EventBusCom com;
 

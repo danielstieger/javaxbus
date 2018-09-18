@@ -12,6 +12,8 @@ public class VertxEchoSunnyTest extends TestCase {
     public static final String VERTX_HOSTNAME = "localhost";
     public static final int VERTX_TCPBRIDGEPORT = 8089;
 
+    //public static final String VERTX_HOSTNAME = "modwerk-test";
+    //public static final int VERTX_TCPBRIDGEPORT = 2128;
 
 
     /**

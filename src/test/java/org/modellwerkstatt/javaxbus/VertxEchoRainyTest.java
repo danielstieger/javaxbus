@@ -9,8 +9,8 @@ import mjson.Json;
  * Unit test for simple TestApp1.
  */
 public class VertxEchoRainyTest extends TestCase {
-    public static final String VERTX_HOSTNAME = "localhost";
-    public static final int VERTX_TCPBRIDGEPORT = 8089;
+    public static final String VERTX_HOSTNAME = VertxEchoSunnyTest.VERTX_HOSTNAME;
+    public static final int VERTX_TCPBRIDGEPORT = VertxEchoSunnyTest.VERTX_TCPBRIDGEPORT;
 
 
 

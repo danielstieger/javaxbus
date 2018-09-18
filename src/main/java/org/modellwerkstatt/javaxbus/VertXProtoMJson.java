@@ -8,11 +8,11 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 
 public class VertXProtoMJson {
-    private Charset utf8Charset;
+    private Charset utf8Charset = Charset.forName("UTF-8");;
 
 
     public VertXProtoMJson(){
-        utf8Charset = Charset.forName("UTF-8");
+
     }
 
 
@@ -52,28 +52,6 @@ public class VertXProtoMJson {
 
     public Json ping(){
         return Json.object().set("type", "ping");
-    }
-
-    synchronized public void writeToStream(DataOutputStream stream, Json msg) throws IOException {
-        String jsonPayLoad = msg.toString();
-        byte[] asBytes = jsonPayLoad.getBytes(utf8Charset);
-
-        // big endian
-        stream.writeInt(asBytes.length);
-        stream.write(asBytes);
-        stream.flush();
-        // System.err.println("-->> " + new String(asBytes));
-    }
-
-    public Json readFormStream(DataInputStream stream) throws IOException {
-        // read complete msg
-        int len = stream.readInt();
-        byte[] message = new byte[len];
-        stream.readFully(message, 0, len);
-        // System.err.println("<<-- " + new String(message));
-
-        String jsonMsg = new String(message, "UTF-8");
-        return Json.read(jsonMsg);
     }
 
 

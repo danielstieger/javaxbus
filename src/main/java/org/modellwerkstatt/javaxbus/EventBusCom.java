@@ -4,8 +4,8 @@ import mjson.Json;
 
 import java.io.*;
 import java.net.ConnectException;
-import java.net.Socket;
 import java.net.SocketException;
+import java.nio.channels.ClosedByInterruptException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,6 +13,7 @@ import java.util.List;
 import static java.lang.Thread.interrupted;
 
 public class EventBusCom implements Runnable {
+
     final static public int RECON_TIMEOUT = 10000;
     final static public int FAST_RECON_TIMEOUT = 500;
     final static public String TEMP_HANDLER_SIGNATURE = "__MODWERK_HC__";
@@ -20,9 +21,8 @@ public class EventBusCom implements Runnable {
 
     private String hostname;
     private int port;
-    private Socket socket;
-    private DataInputStream reader;
-    private DataOutputStream writer;
+    private IOCapabilities io;
+
     private volatile boolean upNRunning;
     private volatile boolean stillConnected;
     private VertXProtoMJson proto;
@@ -35,6 +35,7 @@ public class EventBusCom implements Runnable {
         upNRunning = false;
         stillConnected = false;
         proto= new VertXProtoMJson();
+        io = null;
         consumerHandlers = new HashMap<String, List<ConsumerHandler>>();
         errorHandler = new ArrayList<ErrorHandler >();
         underTest = false;
@@ -49,9 +50,9 @@ public class EventBusCom implements Runnable {
             }
 
             if (publish){
-                proto.writeToStream(writer, proto.publish(adr, msg, replyAdr));
+                io.writeToStream(proto.publish(adr, msg, replyAdr));
             } else {
-                proto.writeToStream(writer, proto.send(adr, msg, replyAdr));
+                io.writeToStream(proto.send(adr, msg, replyAdr));
             }
 
 
@@ -71,7 +72,7 @@ public class EventBusCom implements Runnable {
                 listOfHandlers.add(handler);
 
                 if (listOfHandlers.size() == 1 && registerWithServer){
-                    proto.writeToStream(writer, proto.register(adr));
+                    io.writeToStream(proto.register(adr));
                 }
 
             } catch (IOException e) {
@@ -96,7 +97,7 @@ public class EventBusCom implements Runnable {
                 existingHandlers.remove(handler);
 
                 if (existingHandlers.size() == 0){
-                    proto.writeToStream(writer, proto.unregister(adr));
+                    io.writeToStream(proto.unregister(adr));
                 }
 
             } catch (IOException e) {
@@ -145,16 +146,27 @@ public class EventBusCom implements Runnable {
 
     private void dispatchErrorFromBus(Message msg){
         synchronized (this){
-            for (ErrorHandler e: errorHandler) {
-                e.handleMsgFromBus(stillConnected, upNRunning, msg);
+            if (errorHandler.size() == 0) {
+                System.err.println(msg.toString());
+
+            } else {
+                for (ErrorHandler e: errorHandler) {
+                    e.handleMsgFromBus(stillConnected, upNRunning, msg);
+                }
             }
         }
     }
     private void dispatchException(Exception exception){
         synchronized (this){
-            for (ErrorHandler e: errorHandler) {
-                e.handleException(stillConnected, upNRunning, exception);
+            if (errorHandler.size() == 0) {
+                exception.printStackTrace();
+
+            } else {
+                for (ErrorHandler e: errorHandler) {
+                    e.handleException(stillConnected, upNRunning, exception);
+                }
             }
+
         }
     }
 
@@ -165,7 +177,7 @@ public class EventBusCom implements Runnable {
         while (!interrupted() && upNRunning) {
             try {
                 if (stillConnected) {
-                    Json msg = proto.readFormStream(reader);
+                    Json msg = io.readFormStream();
 
                     String msgType = msg.at("type").asString();
 
@@ -202,7 +214,14 @@ public class EventBusCom implements Runnable {
               if (upNRunning) {
                 dispatchException(e);
               }
-              // else, ignore this one, might be a shutdown
+              // else, ignore this one, might be a shutdown for traditional
+
+            } catch (ClosedByInterruptException e) {
+                stillConnected = false; // this issues a reconnect ..
+                if (upNRunning) {
+                    dispatchException(e);
+                }
+                // else, ignore this one, might be a shutdown for NIO
 
             } catch (EOFException e) {
               stillConnected = false;
@@ -238,7 +257,7 @@ public class EventBusCom implements Runnable {
                 // if that is successfull, we have to register handlers ...
                 synchronized (this){
                     for (String adr: consumerHandlers.keySet()) {
-                        proto.writeToStream(writer, proto.register(adr));
+                        io.writeToStream(proto.register(adr));
                     }
                 }
             }
@@ -282,14 +301,14 @@ public class EventBusCom implements Runnable {
 
     private void initCon(){
         try {
-            socket = new Socket(hostname, port);
+            if (EventBus.USE_NIO) {
+                io = new NonBlockingIO();
+            } else {
+                io = new TraditionalSocketIO();
+            }
 
-            // from server
-            reader = new DataInputStream(socket.getInputStream());
-            // to server
-            writer = new DataOutputStream(socket.getOutputStream());
-
-            proto.writeToStream(writer, proto.ping());
+            io.init(hostname, port);
+            io.writeToStream(proto.ping());
             stillConnected = true;
 
         } catch (IOException e) {
@@ -297,9 +316,6 @@ public class EventBusCom implements Runnable {
         }
     }
 
-    private boolean isInitialized() {
-        return socket != null;
-    }
     public void setUnderTest(){
         underTest = true;
     }
@@ -309,14 +325,17 @@ public class EventBusCom implements Runnable {
             try {
                 upNRunning = false;
 
-                for (String adr: consumerHandlers.keySet()) {
-                    if (adr.contains(TEMP_HANDLER_SIGNATURE)) {
-                        // do not unregister this one, since this is only a reply handler
-                    } else {
-                        proto.writeToStream(writer, proto.unregister(adr));
+                if (stillConnected) {
+                    for (String adr: consumerHandlers.keySet()) {
+                        if (adr.contains(TEMP_HANDLER_SIGNATURE)) {
+                            // do not unregister this one, since this is only a reply handler
+                        } else {
+                            io.writeToStream(proto.unregister(adr));
+                        }
+                        consumerHandlers.get(adr).clear();
                     }
-                    consumerHandlers.get(adr).clear();
                 }
+
                 consumerHandlers.clear();
 
                 // remove all error handlers
@@ -332,18 +351,14 @@ public class EventBusCom implements Runnable {
     public void closeCon(){
         synchronized (this) {
             try {
-                stillConnected=false;
-                reader.close();
-                writer.close();
-                if (socket != null) {
-                    socket.close();
+                if (stillConnected) {
+                    stillConnected = false;
+                    io.close();
                 }
+
 
             } catch (IOException e) {
                 throw new RuntimeException(e);
-
-            } finally {
-                socket = null;
 
             }
 
