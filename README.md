@@ -1,7 +1,7 @@
 # javaxbus
-Simple Java Vertx Eventbus TCP-Client (without any dependencies)
+Simple Java Vert.x Eventbus TCP-Client (without any dependencies)
 
-A [Vert.x EventBus](http://vertx.io/docs/vertx-core/java/#event_bus) client for java environments, using TCP Socket
+A [Vert.x EventBus](http://vertx.io/docs/vertx-core/java/#event_bus) client for java environments, using traditional Socket-IO or NIO.
 IO and a spare thread to communicate with the [vert.x event-bus-tcp-bridge](https://github.com/vert-x3/vertx-tcp-eventbus-bridge). 
 
 * a daemon thread is used to receive data from the vert.x tcp-event-bus-bridge which in turn calls registered consumer handlers
@@ -16,7 +16,7 @@ IO and a spare thread to communicate with the [vert.x event-bus-tcp-bridge](http
 * you can use send() with a handler to respond to an expected reply by the server 
 * if send() is used with a reply handler, server side fails are dispatched to that handler too (and not to the error handler)
 * if send() with reply handler does not receive a reply within 30sec, an error will be received by the reply handler. See the vertx documentation for further information
- 
+* there is a traditional socket io and a java nio implementation available
 
 
 # Usage
