@@ -11,9 +11,8 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
-import java.util.Set;
 
-public class NonBlockingIO implements IOCapabilities {
+public class NonBlockingIO implements IOSocketService {
     final static public int DEFAULT_READ_BUFFER_SIZE = 16000;
     private SocketAddress address;
     private SocketChannel socketChannel;
@@ -22,7 +21,6 @@ public class NonBlockingIO implements IOCapabilities {
 
 
     private Charset utf8Charset = Charset.forName("UTF-8");
-    ;
     private ByteBuffer readBuffer;
 
     @Override

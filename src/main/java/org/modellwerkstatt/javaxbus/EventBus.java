@@ -31,7 +31,7 @@ public class EventBus {
     static public final String VERSION = "0.9 C";
     static public final boolean USE_NIO = true;
     private Thread communicatorThread;
-    private EventBusCom com;
+    private EventBusRunnable com;
 
     public EventBus(){
 
@@ -117,7 +117,7 @@ public class EventBus {
     }
     private void init(String hostname, int port) {
 
-        com = new EventBusCom();
+        com = new EventBusRunnable();
         com.init(hostname, port);
 
         communicatorThread = new Thread(com);

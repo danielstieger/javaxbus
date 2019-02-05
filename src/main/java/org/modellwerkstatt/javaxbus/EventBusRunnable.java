@@ -6,13 +6,14 @@ import java.io.*;
 import java.net.ConnectException;
 import java.net.SocketException;
 import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 import static java.lang.Thread.interrupted;
 
-public class EventBusCom implements Runnable {
+public class EventBusRunnable implements Runnable {
 
     final static public int RECON_TIMEOUT = 10000;
     final static public int FAST_RECON_TIMEOUT = 500;
@@ -21,7 +22,7 @@ public class EventBusCom implements Runnable {
 
     private String hostname;
     private int port;
-    private IOCapabilities io;
+    private IOSocketService io;
 
     private volatile boolean upNRunning;
     private volatile boolean stillConnected;
@@ -31,7 +32,7 @@ public class EventBusCom implements Runnable {
     private List<ErrorHandler> errorHandler;
     private boolean underTest;
 
-    public EventBusCom(){
+    public EventBusRunnable(){
         upNRunning = false;
         stillConnected = false;
         proto= new VertXProtoMJson();
@@ -217,6 +218,13 @@ public class EventBusCom implements Runnable {
               // else, ignore this one, might be a shutdown for traditional
 
             } catch (ClosedByInterruptException e) {
+                stillConnected = false; // this issues a reconnect ..
+                if (upNRunning) {
+                    dispatchException(e);
+                }
+                // else, ignore this one, might be a shutdown for NIO
+
+            } catch(ClosedChannelException e) {
                 stillConnected = false; // this issues a reconnect ..
                 if (upNRunning) {
                     dispatchException(e);

@@ -4,7 +4,7 @@ import mjson.Json;
 
 import java.io.IOException;
 
-public interface IOCapabilities {
+public interface IOSocketService {
 
     void init(String hostname, int port) throws IOException;
     void writeToStream(Json msg) throws IOException;

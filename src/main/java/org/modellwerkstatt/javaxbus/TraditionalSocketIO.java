@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.nio.charset.Charset;
 
-public class TraditionalSocketIO implements IOCapabilities {
+public class TraditionalSocketIO implements IOSocketService {
 
     private Socket socket;
     private DataInputStream reader;
