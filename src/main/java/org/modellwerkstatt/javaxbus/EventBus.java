@@ -89,7 +89,8 @@ public class EventBus {
 
     public boolean isConnected(){
         if (com == null) {
-            throw new IllegalStateException("Eventbus not initialized.");
+            // was not initialiized or maybe already closed...
+            return false;
         }
         return com.isConnected();
     }
