@@ -28,7 +28,7 @@ import mjson.Json;
 
 
 public class EventBus {
-    static public final String VERSION = "0.9 C";
+    static public final String VERSION = "1.0";
     static public final boolean USE_NIO = true;
     private Thread communicatorThread;
     private EventBusRunnable com;
@@ -93,6 +93,14 @@ public class EventBus {
             return false;
         }
         return com.isConnected();
+    }
+
+    public boolean isUpAndRunning(){
+        if (com == null) {
+            // was not initialiized or maybe already closed...
+            return false;
+        }
+        return com.isUpNRunning();
     }
 
     public boolean testReconnect() {

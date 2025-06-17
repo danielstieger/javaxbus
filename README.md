@@ -54,7 +54,7 @@ You will need a vert.x instance with a tcp-event-bus-bridge and permissions in/o
 
 # Building
 
-`mvn package`. The lib can be found in the target/ folder after maven build and tested the package
+`mvn package -Dmaven.test.skip=true`. The lib can be found in the target/ folder after maven build and tested the package
 
 
 
