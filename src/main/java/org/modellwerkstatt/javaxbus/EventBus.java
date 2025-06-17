@@ -95,6 +95,11 @@ public class EventBus {
         return com.isConnected();
     }
 
+    public boolean testReconnect() {
+        com.tryReconnect();
+        return true;
+    }
+
     public void close() {
         if (com == null) {
             throw new IllegalStateException("Eventbus not initialized.");

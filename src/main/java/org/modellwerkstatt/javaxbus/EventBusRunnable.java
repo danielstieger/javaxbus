@@ -15,7 +15,7 @@ import static java.lang.Thread.interrupted;
 
 public class EventBusRunnable implements Runnable {
 
-    final static public int RECON_TIMEOUT = 10000;
+    final static public int     RECON_TIMEOUT = 10000;
     final static public int FAST_RECON_TIMEOUT = 500;
     final static public String TEMP_HANDLER_SIGNATURE = "__MODWERK_HC__";
 
@@ -148,7 +148,11 @@ public class EventBusRunnable implements Runnable {
     private void dispatchErrorFromBus(Message msg){
         synchronized (this){
             if (errorHandler.size() == 0) {
-                System.err.println(msg.toString());
+                if ("unknown_address".equals(msg.getErrMessage()) && "".equals(msg.getErrFailureCode()) && "".equals(msg.getErrFailureType())) {
+                    // ignore, nown return on our platform
+                } else {
+                    System.err.println("EventBusRunnable.dispatchErrorFromBus(): no errorHandlers registered, but received msg:" +  msg.toString());
+                }
 
             } else {
                 for (ErrorHandler e: errorHandler) {
@@ -248,7 +252,7 @@ public class EventBusRunnable implements Runnable {
         }
     }
 
-    private void tryReconnect() {
+    public void tryReconnect() {
         try {
             closeCon();
         } catch (Exception e) {
